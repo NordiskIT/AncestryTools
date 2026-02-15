@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>AncestryTools: Lifespan</title>
+    <meta name="description" content="Privacy-first GEDCOM lifespan timeline with decade histogram. Files are processed locally in your browser; nothing is uploaded.">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root{
+            --bg:#f4f6f9;
+            --card:#ffffff;
+            --text:#212529;
+            --muted:#556;
+            --accent:#4caf50;
+            --accent-contrast:#ffffff;
+            --muted-border:rgba(0,0,0,0.08);
+            --card-radius:8px;
+            --shadow:0 6px 30px rgba(0,0,0,.06);
+        }
+        @media (prefers-color-scheme: dark){
+            :root{
+                --bg:#0f1113;
+                --card:#1e1e1e;
+                --text:#e6e6e6;
+                --muted:#bbb;
+                --accent:#81c784;
+                --accent-contrast:#0b0b0b;
+                --muted-border:rgba(255,255,255,0.04);
+                --shadow:0 8px 40px rgba(0,0,0,.5);
+            }
+        }
+
+        /* ==================== GLOBAL ==================== */
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 2rem 1rem;
+        }
+        @media (prefers-color-scheme: dark) {
+            body { background:#1e1e1e; color:#e0e0e0; }
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: var(--card-radius);
+            box-shadow: var(--shadow);
+            width: 100%;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            border: 1px solid var(--muted-border);
+        }
+        @media (prefers-color-scheme: dark) {
+            .card { background:#262626; box-shadow:0 2px 12px rgba(0,0,0,.4); }
+        }
+
+        h1 { margin:0; font-weight:500; font-size:1.6rem; color:var(--text); }
+        @media (prefers-color-scheme: dark){ h1{color:#ecf0f1;} }
+
+        /* ==================== UPLOAD ==================== */
+        .upload-wrapper{
+            display:flex;
+            align-items:center;
+            gap:.5rem;
+        }
+        .upload-label{
+            cursor:pointer;
+            display:inline-flex;
+            align-items:center;
+            gap:.3rem;
+            padding:.4rem .8rem;
+            border:1px solid var(--muted-border);
+            border-radius:6px;
+            background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+            font-size:.95rem;
+            color:var(--text);
+            transition:background .2s,border-color .2s;
+        }
+        .upload-label:hover{background:rgba(0,0,0,0.03)}
+        .upload-label svg{width:1rem;height:1rem;fill:var(--muted);}
+        input[type=file]{display:none;}
+
+        /* ==================== FILTER UI ==================== */
+        .filter-wrapper{
+            margin-top:1rem;
+            display:flex;
+            align-items:stretch;
+            gap:.75rem;
+            flex-wrap:wrap;
+        }
+        .filter-wrapper input,
+        .filter-wrapper button{
+            font:inherit;
+            border:1px solid var(--muted-border);
+            border-radius:6px;
+            padding:.45rem .75rem;
+            transition:all .15s ease;
+            background:transparent;
+            color:var(--text);
+        }
+        .filter-wrapper input{
+            width:100px;
+            background:#fafafa;
+            color:#212529;
+        }
+        .filter-wrapper input:focus{
+            outline:none;
+            border-color:var(--accent);
+            box-shadow:0 0 0 3px rgba(76,175,80,.12);
+            background:var(--card);
+        }
+        .filter-wrapper button{
+            cursor:pointer;
+            background:var(--accent);
+            color:var(--accent-contrast);
+        }
+        .filter-wrapper button:hover{background:#43a047;}
+        .filter-wrapper button:active{background:#388e3c;}
+        .filter-wrapper button#clear-filter{
+            background:transparent;
+            color:var(--text);
+            border:1px solid var(--muted-border);
+        }
+        .filter-wrapper button#clear-filter:hover{background:#d5d5d5;}
+        .filter-wrapper button#clear-filter:active{background:#c0c0c0;}
+        @media (prefers-color-scheme: dark){
+            .filter-wrapper input{
+                background:#2b2b2b;
+                border-color:#555;
+                color:#e0e0e0;
+            }
+            .filter-wrapper input:focus{
+                border-color:#81c784;
+                background:#1e1e1e;
+                box-shadow:0 0 0 3px rgba(129,199,132,.2);
+            }
+            .filter-wrapper button{
+                background:#81c784;
+                color:#212529;
+            }
+            .filter-wrapper button:hover{background:#66bb6a;}
+            .filter-wrapper button:active{background:#4caf50;}
+            .filter-wrapper button#clear-filter{
+                background:#555;
+                color:#e0e0e0;
+            }
+            .filter-wrapper button#clear-filter:hover{background:#666;}
+            .filter-wrapper button#clear-filter:active{background:#777;}
+        }
+
+        /* ==================== HISTOGRAM ==================== */
+        #histogram{
+            overflow:visible;
+            height:165px;
+            border-bottom:1px solid var(--muted-border);
+            width:100%;
+        }
+        @media (prefers-color-scheme: dark){ #histogram{border-bottom-color:#444;} }
+
+        /* ==================== CHART CONTAINER ==================== */
+        #chart-scroll{
+            overflow-x:auto;
+            overflow-y:auto;
+            max-height:80vh;
+            border-top:1px solid var(--muted-border);
+            width:100%;
+        }
+        @media (prefers-color-scheme: dark){ #chart-scroll{border-top-color:#444;} }
+
+        /* ==================== SVG STYLING ==================== */
+        .person-label{font-size:.85rem;fill:currentColor;}
+        .life-bar{
+            cursor:pointer;
+            transition:transform .15s,filter .15s;
+        }
+        .life-bar:hover{
+            transform:translateY(-1px);
+            filter:brightness(1.06);
+        }
+        .life-bar.green{fill:#4CAF50}
+        .life-bar.yellow{fill:#FFD700}
+        .year-tick{ stroke:var(--muted-border); stroke-width:1; }
+        .year-label{ font-size:.7rem; fill:var(--muted); }
+        .hist-label{ font-size:10px; fill:var(--muted); }
+
+        /* ==================== TOOLTIP (lifebars) ==================== */
+        .tooltip, .event-tooltip{
+            position:absolute;
+            padding:.4rem .8rem;
+            background:var(--card);
+            color:var(--text);
+            border-radius:6px;
+            font-size:.78rem;
+            pointer-events:none;
+            opacity:0;
+            transition:opacity .12s ease,transform .12s ease;
+            white-space:pre-line;
+            box-shadow:var(--shadow);
+            border:1px solid var(--muted-border);
+            z-index:1000;
+        }
+        @media (prefers-color-scheme: dark){ .tooltip{background:#111;} }
+
+        /* ==================== FILTER OVERLAY ==================== */
+        .filter-overlay{ fill:rgba(33,150,243,0.08); stroke:rgba(33,150,243,0.28); stroke-width:1 }
+
+        /* ==================== EVENT MARKERS ==================== */
+        .event-marker{ stroke-dasharray:4 2; stroke-width:1 }
+
+    </style>
+</head>
+
+<body>
+
+<div class="card">
+    <h1>GEDCOM Lifespan Timeline</h1>
+    <p style="margin:0;color:var(--muted);font-size:.95rem">Load a local GEDCOM file to visualise lifespans and decade activity. All processing runs in your browser — no data leaves your machine.</p>
+
+    <!-- ---------- FILE UPLOAD ---------- -->
+    <div class="upload-wrapper">
+        <label class="upload-label" for="upload">
+            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            Choose GEDCOM file
+        </label>
+        <input type="file" id="upload" accept=".ged,.gedcom,.txt">
+    </div>
+
+    <!-- ---------- FILTER UI ---------- -->
+    <div class="filter-wrapper">
+        <label>From <input id="filter-from" type="number" placeholder="e.g. 1800"></label>
+        <label>To   <input id="filter-to"   type="number" placeholder="e.g. 1900"></label>
+        <label>Name contains <input id="filter-name" type="text" placeholder="e.g. Smith"></label>
+        <label>Birth place contains <input id="filter-place" type="text" placeholder="e.g. London"></label>
+        <button id="apply-filter">Apply filter</button>
+        <button id="clear-filter">Clear</button>
+    </div>
+
+    <!-- ---------- CHART AREA ---------- -->
+    <div id="chart-scroll">
+        <div id="histogram"></div>
+        <div id="chart"></div>
+    </div>
+
+    <!-- ---------- TOOLTIP ELEMENTS ---------- -->
+    <div class="tooltip" id="tooltip"></div>
+    <div class="event-tooltip" id="event-tooltip"></div>
+</div>
+
+<script>
+    /* ==============================================================
+       DATA – Scandinavian events + colour map (by type)
+       ============================================================== */
+    const EVENT_TYPE_COLOR = {
+        war:      "#e53935",   // red
+        treaty:   "#1e88e5",   // blue
+        cultural: "#8e24aa",   // purple
+        disaster: "#fb8c00",   // orange
+        other:    "#607d8b"    // grey
+    };
+
+    const SCANDINAVIAN_EVENTS = [
+        {year: 793,  label:"Viking raid on Lindisfarne",               type:"war"},
+        {year:1066,  label:"Battle of Stamford Bridge (Norway)",      type:"war"},
+        {year:1397,  label:"Kalmar Union formed",                     type:"treaty"},
+        {year:1520,  label:"Stockholm Bloodbath",                     type:"war"},
+        {year:1611,  label:"Swedish Empire peak",                     type:"other"},
+        {year:1814,  label:"Treaty of Kiel – Norway ceded to Sweden",type:"treaty"},
+        {year:1905,  label:"Norwegian independence",                  type:"treaty"},
+        {year:1945,  label:"End of WWII – Nordic cooperation",       type:"cultural"},
+        {year:1995,  label:"EU accession (Finland, Sweden, Austria)",type:"treaty"},
+        {year:2020,  label:"COVID‑19 pandemic",                       type:"disaster"}
+    ];
+
+    /* ==============================================================
+       GEDCOM PARSER (unchanged)
+       ============================================================== */
+    function parseGedcom(text){
+        const lines = text.split(/\r?\n/);
+        const people = [];
+        let cur=null, tag=null;
+        for(let raw of lines){
+            const line = raw.trim(); if(!line) continue;
+            const parts = line.split(' ');
+            const lvl = Number(parts[0]); if(isNaN(lvl)) continue;
+
+            if(lvl===0){
+                if(cur && cur.NAME && (cur.BIRT||cur.DEAT)) people.push(cur);
+                if(parts[2]==='INDI'){
+                    cur={id:parts[1],NAME:null,BIRT:{},DEAT:{}};
+                    tag=null;
+                }else cur=null;
+                continue;
+            }
+            if(!cur) continue;
+            if(lvl===1){
+                tag=parts[1];
+                if(tag==='NAME') cur.NAME=parts.slice(2).join(' ');
+                else if(tag==='BIRT'||tag==='DEAT') cur[tag]={};
+                continue;
+            }
+            if(lvl===2 && tag && (tag==='BIRT'||tag==='DEAT')){
+                if(parts[1]==='DATE') cur[tag].date=parts.slice(2).join(' ');
+                else if(parts[1]==='PLAC' && tag==='BIRT')
+                    cur.birthPlace=parts.slice(2).join(' ');
+            }
+        }
+        if(cur && cur.NAME && (cur.BIRT||cur.DEAT)) people.push(cur);
+        return people;
+    }
+
+    function yearFrom(dateStr){
+        if(!dateStr) return null;
+        const m = dateStr.match(/(\d{4})/g);
+        return m ? parseInt(m[m.length-1],10) : null;
+    }
+
+    /* ==============================================================
+       GLOBAL FILTER STATE
+       ============================================================== */
+    let filterFrom=null, filterTo=null, filterName='', filterPlace='';
+
+    /* ==============================================================
+       SVG HELPERS
+       ============================================================== */
+    const NS = "http://www.w3.org/2000/svg";
+
+    function drawMarker(svg, ev, minY, span, chartW, labelW){
+        const x = labelW + 20 + ((ev.year - minY) / span) * chartW;
+
+        // vertical line
+        const line = document.createElementNS(NS,"line");
+        line.setAttribute("x1",x); line.setAttribute("y1",0);
+        line.setAttribute("x2",x); line.setAttribute("y2",svg.getAttribute("height"));
+        line.setAttribute("stroke",EVENT_TYPE_COLOR[ev.type]||EVENT_TYPE_COLOR.other);
+        line.setAttribute("class","event-marker");
+        svg.appendChild(line);
+
+        // tiny year label (quick scan)
+        const yr = document.createElementNS(NS,"text");
+        yr.setAttribute("x",x+2); yr.setAttribute("y",12);
+        yr.setAttribute("fill",EVENT_TYPE_COLOR[ev.type]||EVENT_TYPE_COLOR.other);
+        yr.setAttribute("font-size","9px");
+        yr.setAttribute("transform",`rotate(-45 ${x+2} 12)`);
+        yr.textContent = ev.year;
+        svg.appendChild(yr);
+
+        // tooltip handling
+        const tip = document.getElementById("event-tooltip");
+        line.addEventListener("mouseenter",e=>{
+            tip.textContent = `${ev.year}: ${ev.label}`;
+            tip.style.left = (e.pageX+12)+"px";
+            tip.style.top  = (e.pageY+12)+"px";
+            tip.style.opacity = 1;
+        });
+        line.addEventListener("mouseleave",()=>{ tip.style.opacity=0; });
+    }
+
+    function renderScandinavianMarkers(svg,minY,maxY,chartW,labelW){
+        const span = Math.max(1, maxY - minY);
+        SCANDINAVIAN_EVENTS.forEach(ev=>{
+            if(ev.year>=minY && ev.year<=maxY){
+                drawMarker(svg,ev,minY,span,chartW,labelW);
+            }
+        });
+    }
+
+    /* ==============================================================
+       MAIN RENDER FUNCTION
+       ============================================================== */
+    function render(ged){
+        const chartDiv = document.getElementById('chart');
+        const histDiv  = document.getElementById('histogram');
+        chartDiv.innerHTML=''; histDiv.innerHTML='';
+
+        /* ---- Normalise data ---- */
+        let rows = ged.map(p=>({
+            name: p.NAME,
+            place: p.birthPlace||'',
+            birth: yearFrom(p.BIRT?.date),
+            death: yearFrom(p.DEAT?.date),
+            hasBirth: !!p.BIRT?.date,
+            hasDeath: !!p.DEAT?.date,
+            assumed:false
+        })).filter(p=>p.birth!==null||p.death!==null);
+
+        // 80‑year assumption for missing dates
+        rows.forEach(p=>{
+            if(p.birth===null && p.death!==null){ p.birth=p.death-80; p.assumed=true; }
+            else if(p.death===null && p.birth!==null){ p.death=p.birth+80; p.assumed=true; }
+        });
+
+        /* ---- FILTERING (date range + name + place) ---- */
+        if(filterFrom!==null||filterTo!==null||filterName!==''||filterPlace!==''){
+            rows = rows.filter(p=>{
+                const birthY = p.birth!==null ? p.birth : -Infinity;
+                const deathY = p.death!==null ? p.death : Infinity;
+                const dateOk = (filterFrom===null||deathY>=filterFrom) &&
+                               (filterTo===null||birthY<=filterTo);
+                const nameOk = filterName==='' ||
+                               (p.name && p.name.toLowerCase().includes(filterName));
+                const placeOk= filterPlace==='' ||
+                               (p.place && p.place.toLowerCase().includes(filterPlace));
+                return dateOk && nameOk && placeOk;
+            });
+        }
+
+        const valid = rows.filter(p=>p.birth!==null&&p.death!==null);
+        if(!valid.length){
+            chartDiv.textContent='No usable data for the selected range.';
+            return;
+        }
+
+        valid.sort((a,b)=>a.birth-b.birth||a.name.localeCompare(b.name));
+
+                /* ---- Layout constants ---- */
+        const rowH   = 30;                                 // height of each row
+        const labelW = 260;                                // space for name (+optional place)
+        const minY   = Math.min(...valid.map(p => p.birth));
+        const maxY   = Math.max(...valid.map(p => p.death));
+        // Ensure span is never zero to avoid divisions by zero later
+        const spanRaw = maxY - minY;
+        const span = Math.max(1, spanRaw);
+        const chartW = Math.max(800, span * 10);            // ~10 px per year, but never narrower than 800 px
+        const svgH   = valid.length * rowH + 60;           // extra room for the year ruler
+        const histH  = 165;                                // fixed histogram height
+        const yearBarW = chartW / span;                    // width of a single year in pixels
+
+        /* -----------------------------------------------------------------
+           HISTOGRAM (10‑year buckets)
+           ----------------------------------------------------------------- */
+         const bucketStart = Math.floor(minY / 10) * 10;          // first full decade
+         let bucketEnd   = Math.ceil(maxY / 10) * 10;           // last full decade
+         if (bucketEnd === bucketStart) bucketEnd = bucketStart + 10; // ensure at least one decade
+         const bucketCount = Math.max(1, (bucketEnd - bucketStart) / 10);
+         const bucketCounts = new Array(bucketCount).fill(0);
+
+         // Count people alive each year, then roll‑up into decades
+         for (let y = minY; y <= maxY; y++) {
+             const bucketIdx = Math.floor((y - bucketStart) / 10);
+             let cnt = 0;
+             for (const p of valid) {
+                 if (p.birth <= y && y <= p.death) cnt++;
+             }
+             bucketCounts[bucketIdx] += cnt;   // sum per‑year counts
+         }
+         const avgBucketCounts = bucketCounts.map(c => c / 10); // average per decade
+         const maxCount = Math.max(...avgBucketCounts, 1); // avoid zero division when empty
+
+         const histSvg = document.createElementNS(NS, 'svg');
+         histSvg.setAttribute('width', chartW + labelW + 40);
+         histSvg.setAttribute('height', histH);
+         histDiv.appendChild(histSvg);
+
+        // ---- HISTOGRAM Y-AXIS + GRID ----
+        // Draw simple grid lines (no numeric labels)
+        const gridLeft = labelW + 20;
+        const axisPaddingTop = 8;
+        const axisPaddingBottom = 20;
+        const chartH = histH - axisPaddingBottom;
+        const vMax = Math.ceil(maxCount);
+        const vMid = Math.round(vMax / 2);
+        [0, vMid, vMax].forEach((val) => {
+            const ypos = axisPaddingTop + (1 - (val / Math.max(vMax,1))) * (chartH - axisPaddingTop);
+            const gx = document.createElementNS(NS, 'line');
+            gx.setAttribute('x1', gridLeft); gx.setAttribute('y1', ypos);
+            gx.setAttribute('x2', chartW + labelW + 20); gx.setAttribute('y2', ypos);
+            gx.setAttribute('class', 'year-tick'); gx.setAttribute('stroke-opacity', 0.25);
+            histSvg.appendChild(gx);
+        });
+
+        // Single Y-axis label
+        const yLabel = document.createElementNS(NS, 'text');
+        const yLabelX = 12;
+        const yLabelY = histH / 2;
+        yLabel.setAttribute('x', yLabelX);
+        yLabel.setAttribute('y', yLabelY);
+        yLabel.setAttribute('font-size', '12px');
+        yLabel.setAttribute('fill', 'var(--muted)');
+        yLabel.setAttribute('text-anchor', 'middle');
+        yLabel.setAttribute('transform', `rotate(-90 ${yLabelX} ${yLabelY})`);
+        yLabel.textContent = 'Living';
+        histSvg.appendChild(yLabel);
+
+         // ---- FILTER OVERLAY (histogram) ----
+        if (filterFrom !== null || filterTo !== null) {
+            const fFrom = filterFrom !== null ? filterFrom : minY;
+            const fTo   = filterTo   !== null ? filterTo   : maxY;
+            const xFrom = labelW + 20 + ((fFrom - minY) / span) * chartW;
+            const xTo   = labelW + 20 + ((fTo   - minY) / span) * chartW;
+            const overlay = document.createElementNS(NS, 'rect');
+            overlay.setAttribute('x', xFrom);
+            overlay.setAttribute('y', 0);
+            overlay.setAttribute('width', Math.max(xTo - xFrom, 0));
+            overlay.setAttribute('height', histH);
+            overlay.setAttribute('class', 'filter-overlay');
+            histSvg.insertBefore(overlay, histSvg.firstChild);
+        }
+
+        // ---- DRAW HISTOGRAM BARS ----
+        const decadeBarW = yearBarW * 10;
+        avgBucketCounts.forEach((cnt, i) => {
+            const x = labelW + 20 + i * decadeBarW;
+            const barHeight = (cnt / maxCount) * (histH - 30);
+            const y = histH - barHeight;
+
+            const rect = document.createElementNS(NS, 'rect');
+            rect.setAttribute('x', x);
+            rect.setAttribute('y', y);
+            rect.setAttribute('width', Math.max(decadeBarW, 1));
+            rect.setAttribute('height', barHeight);
+            rect.setAttribute('fill', '#4CAF50');
+            histSvg.appendChild(rect);
+
+            // show count on hover for quick inspection
+            rect.addEventListener('mouseenter', e => {
+                const tip = document.getElementById('tooltip');
+                tip.textContent = `${bucketStart + i*10}–${bucketStart + i*10 + 9}: avg ${Math.round(cnt)}`;
+                tip.style.left = (e.pageX + 12) + 'px';
+                tip.style.top = (e.pageY + 12) + 'px';
+                tip.style.opacity = 1;
+            });
+            rect.addEventListener('mouseleave', () => { document.getElementById('tooltip').style.opacity = 0; });
+
+            const txt = document.createElementNS(NS, 'text');
+            txt.setAttribute('x', x + decadeBarW / 2);
+            txt.setAttribute('y', y - 8);
+            txt.setAttribute('text-anchor', 'middle');
+            txt.setAttribute('font-size', '10px');
+            txt.setAttribute('class', 'hist-label');
+            txt.textContent = Math.round(cnt);
+            histSvg.appendChild(txt);
+
+            // x-axis labels removed to reduce clutter
+        });
+
+        // ---- SCANDINAVIAN MARKERS (histogram) ----
+        renderScandinavianMarkers(histSvg, minY, maxY, chartW, labelW);
+
+        /* -----------------------------------------------------------------
+           MAIN CHART (ruler + lifebars)
+           ----------------------------------------------------------------- */
+        const chartSvg = document.createElementNS(NS, 'svg');
+        chartSvg.setAttribute('width', chartW + labelW + 40);
+        chartSvg.setAttribute('height', svgH);
+        chartDiv.appendChild(chartSvg);
+
+        // ---- FILTER OVERLAY (main chart) ----
+        if (filterFrom !== null || filterTo !== null) {
+            const fFrom = filterFrom !== null ? filterFrom : minY;
+            const fTo   = filterTo   !== null ? filterTo   : maxY;
+            const xFrom = labelW + 20 + ((fFrom - minY) / span) * chartW;
+            const xTo   = labelW + 20 + ((fTo   - minY) / span) * chartW;
+            const overlay = document.createElementNS(NS, 'rect');
+            overlay.setAttribute('x', xFrom);
+            overlay.setAttribute('y', 0);
+            overlay.setAttribute('width', Math.max(xTo - xFrom, 0));
+            overlay.setAttribute('height', svgH);
+            overlay.setAttribute('class', 'filter-overlay');
+            chartSvg.insertBefore(overlay, chartSvg.firstChild);
+        }
+
+        const defs = document.createElementNS(NS, 'defs');
+        chartSvg.appendChild(defs);
+        const tooltip = document.getElementById('tooltip');
+
+        // ---- YEAR RULER ----
+        const rulerY = 30;
+        let step;
+        if (span <= 30) step = 1;
+        else if (span <= 100) step = 5;
+        else if (span <= 200) step = 10;
+        else step = Math.ceil(span / 20);
+        for (let yr = minY; yr <= maxY; yr += step) {
+            const x = labelW + 20 + ((yr - minY) / span) * chartW;
+            const line = document.createElementNS(NS, 'line');
+            line.setAttribute('x1', x); line.setAttribute('y1', rulerY);
+            line.setAttribute('x2', x); line.setAttribute('y2', svgH);
+            line.setAttribute('class', 'year-tick');
+            chartSvg.appendChild(line);
+            const txt = document.createElementNS(NS, 'text');
+            txt.setAttribute('x', x + 2); txt.setAttribute('y', rulerY - 5);
+            txt.setAttribute('class', 'year-label');
+            txt.textContent = yr;
+            chartSvg.appendChild(txt);
+        }
+
+        // ---- ROWS (names + lifebars) ----
+        valid.forEach((p, i) => {
+            const y = rulerY + 20 + i * rowH;
+
+            // Name (plus optional birthplace)
+            const nameTxt = document.createElementNS(NS, 'text');
+            nameTxt.setAttribute('x', 5);
+            nameTxt.setAttribute('y', y + 5);
+            nameTxt.setAttribute('class', 'person-label');
+            nameTxt.textContent = p.name + (p.place ? ` (${p.place})` : '');
+            chartSvg.appendChild(nameTxt);
+
+            // Bar geometry
+            const barX = labelW + 20 + ((p.birth - minY) / span) * chartW;
+            const barW = ((p.death - p.birth) / span) * chartW;
+
+            // Determine fill (solid colour or gradient)
+            let fill;
+            if (p.hasBirth && p.hasDeath) fill = 'green';
+            else if (!p.hasBirth && !p.hasDeath) fill = 'yellow';
+            else if (!p.hasBirth && p.hasDeath) {
+                // Gradient: yellow → green (missing birth)
+                const gid = `gradStart${i}`;
+                const g = document.createElementNS(NS, 'linearGradient');
+                g.setAttribute('id', gid);
+                g.setAttribute('x1', '0%'); g.setAttribute('y1', '0%');
+                g.setAttribute('x2', '100%'); g.setAttribute('y2', '0%');
+                const s0 = document.createElementNS(NS, 'stop');
+                s0.setAttribute('offset', '0%'); s0.setAttribute('stop-color', '#FFD700');
+                const s1 = document.createElementNS(NS, 'stop');
+                s1.setAttribute('offset', '5%'); s1.setAttribute('stop-color', '#4CAF50');
+                const s2 = document.createElementNS(NS, 'stop');
+                s2.setAttribute('offset', '100%'); s2.setAttribute('stop-color', '#4CAF50');
+                g.append(s0, s1, s2); defs.appendChild(g);
+                fill = `url(#${gid})`;
+            } else {
+                // Gradient: green → yellow (missing death)
+                const gid = `gradEnd${i}`;
+                const g = document.createElementNS(NS, 'linearGradient');
+                g.setAttribute('id', gid);
+                g.setAttribute('x1', '0%'); g.setAttribute('y1', '0%');
+                g.setAttribute('x2', '100%'); g.setAttribute('y2', '0%');
+                const s0 = document.createElementNS(NS, 'stop');
+                s0.setAttribute('offset', '0%'); s0.setAttribute('stop-color', '#4CAF50');
+                const s1 = document.createElementNS(NS, 'stop');
+                s1.setAttribute('offset', '95%'); s1.setAttribute('stop-color', '#4CAF50');
+                const s2 = document.createElementNS(NS, 'stop');
+                s2.setAttribute('offset', '100%'); s2.setAttribute('stop-color', '#FFD700');
+                g.append(s0, s1, s2); defs.appendChild(g);
+                fill = `url(#${gid})`;
+            }
+
+            // ---- CREATE THE RECTANGLE FOR THE LIFESPAN ----
+            const rect = document.createElementNS(NS, 'rect');
+            rect.setAttribute('x', barX);
+            rect.setAttribute('y', y - 8);
+            rect.setAttribute('width', Math.max(barW, 2)); // guarantee visibility
+            rect.setAttribute('height', 16);
+            rect.setAttribute('class', 'life-bar');
+
+            // Apply colour or gradient
+            if (fill === 'green' || fill === 'yellow') {
+                rect.setAttribute('class', `life-bar ${fill}`);
+            } else {
+                rect.setAttribute('fill', fill);
+            }
+
+            // ---- TOOLTIP (lifebar) ----
+            rect.addEventListener('mouseenter', e => {
+                const birthLabel = p.hasBirth ? `${p.birth}` : `${p.birth} (assumed)`;
+                const deathLabel = p.hasDeath ? `${p.death}` : `${p.death} (assumed)`;
+                const locLine = p.place ? `Location: ${p.place}\n` : '';
+                tooltip.textContent =
+                    `${p.name}\n` +
+                    `${locLine}` +
+                    `Born: ${birthLabel}\n` +
+                    `Died: ${deathLabel}`;
+                tooltip.style.left = (e.pageX + 12) + 'px';
+                tooltip.style.top  = (e.pageY + 12) + 'px';
+                tooltip.style.opacity = 1;
+            });
+            rect.addEventListener('mouseleave', () => {
+                tooltip.style.opacity = 0;
+            });
+
+            chartSvg.appendChild(rect);
+        });
+
+        // ---- SCANDINAVIAN MARKERS (main chart) ----
+        renderScandinavianMarkers(chartSvg, minY, maxY, chartW, labelW);
+    }
+
+    /* -----------------------------------------------------------------
+       FILTER BUTTON LOGIC
+       ----------------------------------------------------------------- */
+    document.getElementById('apply-filter').addEventListener('click', () => {
+        const fromVal  = document.getElementById('filter-from').value;
+        const toVal    = document.getElementById('filter-to').value;
+        const nameVal  = document.getElementById('filter-name').value;
+        const placeVal = document.getElementById('filter-place').value;
+
+        filterFrom   = fromVal ? parseInt(fromVal, 10) : null;
+        filterTo     = toVal   ? parseInt(toVal,   10) : null;
+        filterName   = nameVal.trim().toLowerCase();
+        filterPlace  = placeVal.trim().toLowerCase();
+
+        if (window.lastGed) render(window.lastGed);
+    });
+
+    document.getElementById('clear-filter').addEventListener('click', () => {
+        filterFrom = filterTo = null;
+        filterName = filterPlace = '';
+        document.getElementById('filter-from').value = '';
+        document.getElementById('filter-to').value   = '';
+        document.getElementById('filter-name').value = '';
+        document.getElementById('filter-place').value = '';
+        if (window.lastGed) render(window.lastGed);
+    });
+
+    /* -----------------------------------------------------------------
+       FILE INPUT
+       ----------------------------------------------------------------- */
+    document.getElementById('upload')
+        .addEventListener('change', async e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const txt = await file.text();
+            const ged = parseGedcom(txt);
+            // Store globally so we can re‑render after applying filters
+            window.lastGed = ged;
+            render(ged);
+        });
+</script>
+
+</body>
+</html>

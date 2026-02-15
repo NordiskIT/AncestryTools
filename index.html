@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>AncestryTools — Privacy-first genealogy utilities</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root{
+            --bg: #f4f6f9;
+            --card: #ffffff;
+            --text: #212529;
+            --muted: #556;
+            --accent: #4caf50;
+            --accent-contrast: #ffffff;
+            --card-shadow: 0 6px 30px rgba(0,0,0,.06);
+        }
+        @media (prefers-color-scheme: dark){
+            :root{
+                --bg: #0f1113;
+                --card: #1e1e1e;
+                --text: #e6e6e6;
+                --muted: #bbb;
+                --accent: #81c784;
+                --accent-contrast: #0b0b0b;
+                --card-shadow: 0 8px 40px rgba(0,0,0,.5);
+            }
+        }
+        html,body{height:100%;margin:0;font-family:Roboto,system-ui,-apple-system,"Segoe UI",Arial}
+        body{background:var(--bg);color:var(--text);display:flex;align-items:flex-start;justify-content:center;padding:3rem}
+        .wrap{width:100%;max-width:1100px}
+        header{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem}
+        h1{margin:0;font-size:1.25rem;font-weight:500}
+        p.lead{margin:0;color:var(--muted)}
+
+        .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem}
+        .tool-card{
+            background:var(--card);
+            border-radius:10px;
+            padding:1rem;
+            box-shadow:var(--card-shadow);
+            display:flex;flex-direction:column;gap:.5rem;text-decoration:none;color:inherit;border:1px solid rgba(0,0,0,0.03);
+            transition:transform .12s ease,box-shadow .12s ease;
+        }
+        .tool-card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,.08)}
+        .tool-title{font-weight:500;margin:0;font-size:1rem}
+        .tool-desc{color:var(--muted);font-size:.94rem;margin:0}
+        .tool-meta{margin-top:auto;display:flex;gap:.5rem;align-items:center}
+        .pill{background:var(--accent);color:var(--accent-contrast);padding:.25rem .5rem;border-radius:999px;font-size:.85rem}
+
+        .privacy{margin-top:1rem;padding:.9rem;border-radius:8px;background:linear-gradient(180deg,rgba(76,175,80,0.06),transparent);color:var(--muted);border:1px solid rgba(76,175,80,.08)}
+
+        footer{margin-top:1.25rem;color:var(--muted);font-size:.9rem}
+
+        @media (max-width:480px){body{padding:1rem}.wrap{padding:0}}
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header>
+        <div>
+            <h1>AncestryTools</h1>
+            <p class="lead">Privacy-first, browser-based genealogy utilities that run entirely on your device.</p>
+        </div>
+        <div style="text-align:right">
+            <small style="color:var(--muted)">Static site • No external tracking</small>
+        </div>
+    </header>
+
+    <main>
+        <div class="grid">
+            <a class="tool-card" href="timeline.html">
+                <div>
+                    <h3 class="tool-title">Timeline</h3>
+                    <p class="tool-desc">Interactive GEDCOM lifespan visualiser with decade histogram and historical markers. Files are read locally and never uploaded.</p>
+                </div>
+                <div class="tool-meta">
+                    <span class="pill">Local only</span>
+                    <small style="color:var(--muted)">timeline.html</small>
+                </div>
+            </a>
+
+            <div class="tool-card" role="article">
+                <div>
+                    <h3 class="tool-title">Family Tree Export</h3>
+                    <p class="tool-desc">Export subsets of GEDCOM data to CSV/JSON for local analysis. (Planned)</p>
+                </div>
+                <div class="tool-meta">
+                    <span class="pill">Planned</span>
+                    <small style="color:var(--muted)">Export locally</small>
+                </div>
+            </div>
+
+            <div class="tool-card" role="article">
+                <div>
+                    <h3 class="tool-title">Overlap Matrix</h3>
+                    <p class="tool-desc">Visualise temporal overlap between individuals. (Planned)</p>
+                </div>
+                <div class="tool-meta">
+                    <span class="pill">Planned</span>
+                    <small style="color:var(--muted)">Privacy-first</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="privacy">
+            <strong>Privacy note</strong>
+            <p style="margin:.5rem 0 0 0;color:var(--muted)">All tools process files in your browser. GEDCOM and derived results remain on your machine unless you explicitly save or share them. There are no remote uploads, analytics or tracking included by default.</p>
+        </div>
+    </main>
+
+    <footer>
+        <p>To preview locally: run <code>python -m http.server 8000</code> or use a similar static server and open <code>http://localhost:8000</code>.</p>
+    </footer>
+</div>
+</body>
+</html>
